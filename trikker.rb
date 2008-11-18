@@ -1,6 +1,7 @@
 #!ruby
 #!/usr/local/bin/ruby -rubygems
 require 'camping'
+require 'basic_authentication'
 
 Camping.goes :Trikker
 
