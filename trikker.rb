@@ -1,7 +1,15 @@
 #!ruby
 #!/usr/local/bin/ruby -rubygems
+require 'rubygems'
+
+gem 'camping'
+gem 'reststop'
+gem 'json'
+
 require 'camping'
 require 'basic_authentication'
+require 'reststop'
+require 'json'
 
 Camping.goes :Trikker
 
@@ -25,7 +33,6 @@ module Trikker::Controllers
   end
   
   endpoint :Timelines, '/statuses/(public|friends|user)_timeline', :get, [:xml, :json, :rss, :atom] do |timeline_type, format|
-    
   end
   
   endpoint :StatusUpdate, '/statues/update', :get, [:xml, :json] do |format|
@@ -69,9 +76,11 @@ module Trikker::Controllers
   end
   
   endpoint :Login, '/account/verify_credentials', :get, [:xml, :json] do |format|
+    render(:login, format.to_s.upcase.to_sym)
   end
   
   endpoint :Logout, '/account/end_session', :post, [:xml, :json] do |format|
+    render(:logout, format.to_s.upcase.to_sym)
   end
   
   endpoint :UpdateLocation, '/account/update_location', :post, [:xml, :json] do |format|
@@ -117,5 +126,40 @@ module Trikker::Controllers
   end
   
   endpoint :DowntimeSchedule, '/help/downtime_schedule', :get, [:xml, :json] do |format|
+  end
+end
+
+# Turn off validation to allow non-XHTML XML
+Markaby::Builder.set(:auto_validation, false)
+#Markaby::Builder.set(:indent, 2)
+
+module Trikker::Views
+  module XML
+    def layout
+      yield
+    end
+    def login
+      tag!(:authorized) { 'true' }
+    end
+    def logout
+      '<?xml version="1.0" encoding="UTF-8"?>' + 
+      tag!(:hash) do
+        tag! (:request) {'/account/end_session.xml'}
+        tag! (:error) {'Logged out.'}
+      end
+    end
+  end
+  
+  module JSON
+    CONTENT_TYPE = 'application/json; charset=utf-8'
+    def layout
+      ::JSON.generate(yield)
+    end
+    def login
+      {:authorized => true}
+    end
+    def logout
+      {:request => "/account/end_session.json", :error => "Logged out."}
+    end
   end
 end
