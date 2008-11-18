@@ -5,6 +5,13 @@ require 'basic_authentication'
 
 Camping.goes :Trikker
 
+module Trikker
+  include Camping::BasicAuth
+  def self.authenticate(u, p)
+    [u,p] == ['hlame', 'woo']
+  end
+end
+
 module Trikker::Controllers
   def self.endpoint(controller_name, routes, methods, formats, &blck)
     f = "\.(#{[*formats].join('|')})"
