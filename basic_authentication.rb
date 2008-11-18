@@ -49,15 +49,14 @@ module Camping #:nodoc:
     def service(*a)
       @username, password = credentials
       app = self.class.name.gsub(/^(\w+)::.+$/, '\1')
-      puts "Looking for #{app}.authenticate"
       if Kernel.const_get(app).authenticate @username, password
         s = super(*a)
       else
-        @status = 401
-        @headers['Content-type'] = 'text/plain'
-        @headers['Status'] = 'Unauthorized'
-        @headers['WWW-Authenticate'] = "Basic realm=\"#{app}\""
-        @body = 'Unauthorized'
+        @status = 302
+        @headers['Content-type'] = 'text/html; charset=utf-8'
+        @headers['Status'] = '302 Found'
+        @headers['Location'] = "#{self.URL}login"
+        @body = %Q{<html><body>You are being <a href="#{self.URL}login">redirected</a>.</body></html>}
         s = self
       end
       s
