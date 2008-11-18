@@ -5,170 +5,109 @@ require 'camping'
 Camping.goes :Trikker
 
 module Trikker::Controllers
-  class Timelines < R '/statuses/(public|friends|user)_timeline\.(xml|json|rss|atom)'
-    def get(timeline_type, format)
+  def self.endpoint(controller_name, routes, methods, formats, &blck)
+    f = "\.(#{[*formats].join('|')})"
+    [*routes].map {|r| r + f}
+    klass = self.const_set(controller_name.to_s, Class.new(R([*routes].map {|r| r + f})))
+    klass.class_eval do
+      [*methods].each do |meth|
+        define_method meth, &blck
+      end
     end
   end
   
-  class StatusUpdate < R '/statues/update\.(xml|json)'
-    def post(format)
-    end
+  endpoint :Timelines, '/statuses/(public|friends|user)_timeline', :get, [:xml, :json, :rss, :atom] do |timeline_type, format|
+    
   end
   
-  class ShowAStatus < R '/statuses/show/(\d+)\.(xml|json)'  
-    def get(id, format)
-    end
+  endpoint :StatusUpdate, '/statues/update', :get, [:xml, :json] do |format|
+  end
+  
+  endpoint :ShowAStatus, '/statuses/show/(\d+)', :get, [:xml, :json] do |id, format|
   end
     
-  class StatusReplies < R '/statuses/replies\.(xml|json|rss|atom)'
-    def get(format)
-    end
+  endpoint :StatusReplies, '/statuses/replies', :get, [:xml, :json, :rss, :atom] do |format|
   end
   
-  class StatusFriendsAndFollowers < R '/statuses/(friends|followers)\.(xml|json)'
-    def get(friend_or_follower, format)
-    end
+  endpoint :StatusFriendsAndFollowers, '/statuses/(friends|followers)', :get, [:xml, :json] do |friend_or_follower, format|
   end
   
-  class DestroyAStatus < R '/statuses/destroy/(\d+)\.(xml|json)'
-    def post(id, format)
-    end
-    def delete(id, format)
-    end
+  endpoint :DestroyAStatus, '/statuses/destroy/(\d+)', [:post, :delete], [:xml, :json] do |id, format|
   end
   
-  class ShowAUser < R '/users/show/([a-ZA-Z\d_]+)\.(xml|json)'
-    # NOTE - technically /users/show.xml?email=blah@blah.com is valid too...
-    def get(id)
-    end
+  # NOTE - technically /users/show.xml?email=blah@blah.com is valid too...
+  endpoint :ShowAUser, '/users/show/([a-zA-Z\d_]+)', :get, [:xml, :json] do |id|
   end
   
-  class DirectMessages < R '/direct_messages\.(xml|json|rss|atom)'
-    def get(format)
-    end
+  endpoint :DirectMessages, '/direct_messages', :get, [:xml, :json, :rss, :atom] do |format|
   end
   
-  class SentDirectMessages < R '/direct_messages/sent\.(xml|json)'
-    def get(format)
-    end
+  endpoint :SentDirectMessages, '/direct_messages/sent', :get, [:xml, :json] do |format|
   end
   
-  class SendADirectMessage < R '/direct_messages/new\.(xml|json)'
-    def post(format)
-    end
+  endpoint :SendADirectMessage, '/direct_messages/new', :post, [:xml, :json] do |format|
   end
   
-  class DestroyADirectMessage < R '/direct_messages/destroy/(\d+)\.(xml|json)'
-    def post(id, format)
-    end
-    def delete(id, format)
-    end
+  endpoint :DestroyADirectMessage, '/direct_messages/destroy/(\d+)', [:post, :delete], [:xml, :json] do |id, format|
   end
   
-  class CreateAFriendship < R '/friendships/create/([a-ZA-Z\d_]+)\.(xml|json)'
-    def post(id, format)
-    end
+  endpoint :CreateAFriendship, '/friendships/create/([a-zA-Z\d_]+)', :post, [:xml, :json] do |id, format|
   end
   
-  class DestroyAFriendship < R '/friendships/destroy/([a-ZA-Z\d_]+)\.(xml|json)'
-    def post(id, format)
-    end
-    
-    def delete(id, format)
-    end
+  endpoint :DestroyAFriendship, '/friendships/destroy/([a-zA-Z\d_]+)', [:post, :delete], [:xml, :json] do |id, format|
   end
   
-  class DoesAFriendshipExist < R '/friendships/exists\.(xml|json)'
-    def get(format)
-    end
+  endpoint :DoesAFriendshipExist, '/friendships/exists', :get, [:xml, :json] do |format|
   end
   
-  class Login < R '/account/verify_credentials\.(xml|json)'
-    def get(format)
-    end
+  endpoint :Login, '/account/verify_credentials', :get, [:xml, :json] do |format|
   end
   
-  class Logout < R '/account/end_session\.(xml|json)'
-    def post(format)
-    end
+  endpoint :Logout, '/account/end_session', :post, [:xml, :json] do |format|
   end
   
-  class UpdateLocation < R '/account/update_location\.(xml|json)'
-    def post(format)
-    end
+  endpoint :UpdateLocation, '/account/update_location', :post, [:xml, :json] do |format|
   end
     
-  class UpdateDeliveryDevice < R '/account/update_delivery_device\.(xml|json)'
-    def post(format)
-    end
+  endpoint :UpdateDeliveryDevice, '/account/update_delivery_device', :post, [:xml, :json] do |format|
   end
 
-  class UpdateProfileColors < R '/account/update_profile_colors\.(xml|json)'
-    def post(format)
-    end
+  endpoint :UpdateProfileColors, '/account/update_profile_colors', :post, [:xml, :json] do |format|
   end
     
-  class UpdateProfileImage < R '/account/update_profile_image\.(xml|json)'
-    def post(format)
-    end
+  endpoint :UpdateProfileImage, '/account/update_profile_image', :post, [:xml, :json] do |format|
   end
   
-  class UpdateProfileBackground < R '/account/update_profile_background\.(xml|json)'
-    def post(format)
-    end
+  endpoint :UpdateProfileBackground, '/account/update_profile_background', :post, [:xml, :json] do |format|
   end
   
-  class WhatsMyRateLimit < R '/account/rate_limit_status\.(xml|json)'
-    def get(format)
-    end
+  endpoint :WhatsMyRateLimit, '/account/rate_limit_status', :get, [:xml, :json] do |format|
   end
   
-  class Favourites < R '/favourites(/[a-zA-Z\d_]+)?\.(xml|json|rss|atom)/'
-    def get(user_or_format, format_or_nil)
-    end
+  endpoint :Favourites, '/favourites(/[a-zA-Z\d_]+)?', :get, [:xml, :json, :rss, :atom] do |user_or_format, format_or_nil|
   end
   
-  class CreateAFavourite < R '/favourites/create/(\d+)\.(xml|json)'
-    def post(id, format)
-    end
+  endpoint :CreateAFavourite, '/favourites/create/(\d+)', :post, [:xml, :json] do |id, format|
   end
   
-  class DestroyAFavourite < R '/favourites/destroy/(\d+)\.(xml|json)'
-    def post(id, format)
-    end
-    def delete(id, format)
-    end
+  endpoint :DestroyAFavourite, '/favourites/destroy/(\d+)', [:post, :delete], [:xml, :json] do |id, format|
   end
   
-  class Follow < R '/notifications/follow/([a-zA-Z\d_]+)\.(xml|json)'
-    def post(id, format)
-    end
+  endpoint :Follow, '/notifications/follow/([a-zA-Z\d_]+)', :post, [:xml, :json] do |id, format|
   end
   
-  class Leave < R '/notifications/leave/([a-zA-Z\d_]+)\.(xml|json)'
-    def post(id, format)
-    end
+  endpoint :Leave, '/notifications/leave/([a-zA-Z\d_]+)', :post, [:xml, :json] do |id, format|
   end
   
-  class CreateABlock < R '/blocks/create/([a-zA-Z\d_]+)\.(xml|json)'
-    def post(id, format)
-    end
+  endpoint :CreateABlock, '/blocks/create/([a-zA-Z\d_]+)', :post, [:xml, :json] do |id, format|
   end
   
-  class DestroyABlock < R '/blocks/destroy/([a-zA-Z\d_]+)\.(xml|json)'
-    def post(id, format)
-    end
-    def delete(id, format)
-    end
+  endpoint :DestroyABlock, '/blocks/destroy/([a-zA-Z\d_]+)', [:post, :delete], [:xml, :json] do |id, format|
   end
   
-  class TestingTestingOneTwoThree < R '/help/test\.(xml|json)'
-    def get(format)
-    end
+  endpoint :TestingTestingOneTwoThree, '/help/test', :get, [:xml, :json] do |format|
   end
   
-  class DowntimeSchedule < R '/help/downtime_schedule\.(xml|json)'
-    def get(format)
-    end
+  endpoint :DowntimeSchedule, '/help/downtime_schedule', :get, [:xml, :json] do |format|
   end
 end
