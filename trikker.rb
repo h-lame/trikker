@@ -22,7 +22,10 @@ end
 
 module Trikker::Controllers
   def self.endpoint(controller_name, routes, methods, formats, &blck)
-    f = "\.(#{[*formats].join('|')})"
+    formats = [*formats]
+    formats_are_optional = formats.delete(:optional)
+    f = "\.(#{formats.join('|')})"
+    f = "(#{f})?" unless formats_are_optional.nil?
     [*routes].map {|r| r + f}
     klass = self.const_set(controller_name.to_s, Class.new(R([*routes].map {|r| r + f})))
     klass.class_eval do
@@ -51,7 +54,8 @@ module Trikker::Controllers
   end
   
   # NOTE - technically /users/show.xml?email=blah@blah.com is valid too...
-  endpoint :ShowAUser, '/users/show/([a-zA-Z\d_]+)', :get, [:xml, :json] do |id|
+  endpoint :ShowAUser, '/users/show/([a-zA-Z\d_]+)', :get, [:xml, :json] do |screen_name_or_user_id|
+    
   end
   
   endpoint :DirectMessages, '/direct_messages', :get, [:xml, :json, :rss, :atom] do |format|
@@ -75,7 +79,8 @@ module Trikker::Controllers
   endpoint :DoesAFriendshipExist, '/friendships/exists', :get, [:xml, :json] do |format|
   end
   
-  endpoint :Login, '/account/verify_credentials', :get, [:xml, :json] do |format|
+  endpoint :Login, '/account/verify_credentials', :get, [:optional, :xml, :json] do |_, format|
+    format = :HTML if format.nil?
     render(:login, format.to_s.upcase.to_sym)
   end
   
@@ -134,6 +139,12 @@ Markaby::Builder.set(:auto_validation, false)
 #Markaby::Builder.set(:indent, 2)
 
 module Trikker::Views
+  module HTML
+    def login
+      'Authorized'
+    end
+  end
+  
   module XML
     def layout
       yield
@@ -142,7 +153,7 @@ module Trikker::Views
       tag!(:authorized) { 'true' }
     end
     def logout
-      '<?xml version="1.0" encoding="UTF-8"?>' + 
+      instruct!
       tag!(:hash) do
         tag! (:request) {'/account/end_session.xml'}
         tag! (:error) {'Logged out.'}
