@@ -7,18 +7,99 @@ gem 'reststop'
 gem 'json'
 
 require 'camping'
+require 'camping/db'
 require 'basic_authentication'
 require 'reststop'
 require 'json'
 
 Camping.goes :Trikker
 
+require 'active_record'
+require 'active_record/serializers/xml_serializer'
+
+ActiveRecord::XmlSerializer.class_eval do
+  def dasherize?
+    false
+  end
+  
+  def root
+    @record.class.to_s.underscore.split('/').last 
+  end
+end
+
+ActiveRecord::XmlSerializer::Attribute.class_eval do
+  def decorations(include_types = true)
+    {}
+  end
+end
+
 module Trikker
   include Camping::BasicAuth
   def self.authenticate(u, p)
-    [u,p] == ['hlame', 'woo']
+    @logged_in_as = Models::User.find_by_screen_name_and_password(u,p)
+    !@logged_in_as.nil?
   end
 end
+
+module Trikker::Models
+  class User < Base
+    belongs_to :user
+    has_many :statuses
+    has_many :followings, :class_name => 'Trikker::Models::Friendship', :foreign_key => 'follower_id'
+    has_many :friendships, :class_name => 'Trikker::Models::Friendship', :foreign_key => 'friend_id'
+    has_many :favourites
+  end
+  class Status < Base
+    belongs_to :user
+    belongs_to :reply_to_status, :class_name => 'Trikker::Models::Status', :foreign_key => 'in_reply_to_status_id'
+    belongs_to :reply_to_user, :class_name => 'Trikker::Models::User', :foreign_key => 'in_reply_to_user_id'
+  end
+  class Friendship< Base
+    belongs_to :friend, :class_name => 'Trikker::Models::User', :foreign_key => 'friend_id'
+    belongs_to :follower, :class_name => 'Trikker::Models::User', :foreign_key => 'follower_id'
+  end
+  class Favourite< Base
+    belongs_to :user
+    belongs_to :status
+  end
+
+  class CreateTheBasics < V 1.0
+    def self.up
+      create_table :trikker_users do |t|
+        t.string :name, :screen_name, :null => false
+        t.string :location, :profile_image_url, :url
+        t.string :description, :limit => 160
+        t.boolean :protected, :null => false, :default => false
+        t.string :profile_background_color, :profile_sidebar_fill_color, :default => 'FFFFFF', :null => false, :limit => 6
+        t.string :profile_text_color, :profile_link_color, :profile_sidebar_border_color, :default => '000000', :null => false, :limit => 6
+        t.time :created_at
+       	t.string :profile_background_image_url
+        t.boolean :profile_background_tile
+        t.string :password
+      end
+      create_table :trikker_statuses do |t|
+        t.time :created_at, :null => false
+        t.string :text, :null => false, :limit => 140
+        t.string :source
+        t.boolean :truncated
+        t.integer :in_reply_to_status_id, :in_reply_to_user_id
+      end
+      create_table :trikker_friendships do |t|
+        t.integer :friend_id, :follower_id, :null => false
+      end
+      create_table :trikker_favourites do |t|
+        t.integer :user_id, :status_id, :null => false
+      end
+    end
+    def self.down
+      drop_table :trikker_favourites
+      drop_table :trikker_friendships
+      drop_table :trikker_statuses
+      drop_table :trikker_users
+    end
+  end
+end
+
 
 module Trikker::Controllers
   def self.endpoint(controller_name, routes, methods, formats, &blck)
@@ -54,8 +135,9 @@ module Trikker::Controllers
   end
   
   # NOTE - technically /users/show.xml?email=blah@blah.com is valid too...
-  endpoint :ShowAUser, '/users/show/([a-zA-Z\d_]+)', :get, [:xml, :json] do |screen_name_or_user_id|
-    
+  endpoint :ShowAUser, '/users/show/([a-zA-Z\d_]+)', :get, [:xml, :json] do |screen_name_or_user_id, format|
+    @user = Trikker::Models::User.find_by_screen_name(screen_name_or_user_id) || Trikker::Models::User.find_by_id(screen_name_or_user_id)
+    render(:user, format.to_s.upcase.to_sym)
   end
   
   endpoint :DirectMessages, '/direct_messages', :get, [:xml, :json, :rss, :atom] do |format|
@@ -159,18 +241,29 @@ module Trikker::Views
         tag! (:error) {'Logged out.'}
       end
     end
+    def user
+      @user.to_xml(:except => :password)
+    end
   end
   
   module JSON
     CONTENT_TYPE = 'application/json; charset=utf-8'
     def layout
-      ::JSON.generate(yield)
+      yield
     end
     def login
-      {:authorized => true}
+      ::JSON.generate({:authorized => true})
     end
     def logout
-      {:request => "/account/end_session.json", :error => "Logged out."}
+      ::JSON.generate({:request => "/account/end_session.json", :error => "Logged out."})
+    end
+    def user
+      @user.to_json
     end
   end
+end
+
+def Trikker.create
+  Camping::Models::Session.create_schema
+  Trikker::Models.create_schema :assume => (Trikker::Models::User.table_exists? ? 1.0 : 0.0)
 end
